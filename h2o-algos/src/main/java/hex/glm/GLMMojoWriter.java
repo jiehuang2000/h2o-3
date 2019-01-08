@@ -22,7 +22,8 @@ public class GLMMojoWriter extends ModelMojoWriter<GLMModel, GLMModel.GLMParamet
   @Override
   protected void writeModelData() throws IOException {
     writekv("use_all_factor_levels", model._parms._use_all_factor_levels);
-
+  //  writekv("maxit", model._parms._maxit);
+    writekv("optimize_theta", model._parms._optimize_theta);
     writekv("cats", model.dinfo()._cats);
     writekv("cat_offsets", model.dinfo()._catOffsets);
     writekv("nums", model._output._dinfo._nums);
