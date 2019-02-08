@@ -346,7 +346,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
     int K = centers.length;
     int N = centers[0].length;
     assert ncats + nnums == N;
-    double[][] value = new double[K][N];
+    double[][] value = MemoryManager.malloc8d(K, N);//new double[K][N];
     double[] means = normSub == null ? MemoryManager.malloc8d(nnums) : normSub;
     double[] mults = normMul == null ? MemoryManager.malloc8d(nnums) : normMul;
     if (normMul == null) Arrays.fill(mults, 1.0);
@@ -366,7 +366,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
 
     // Column count for expanded matrix
     int catsexp = dinfo._catOffsets[dinfo._catOffsets.length-1];
-    double[][] cexp = new double[sdata.length][catsexp + dinfo._nums];
+    double[][] cexp = MemoryManager.malloc8d(sdata.length, catsexp + dinfo._nums);//new double[sdata.length][catsexp + dinfo._nums];
 
     for (int i = 0; i < sdata.length; i++)
       LinearAlgebraUtils.expandRow(sdata[i], dinfo, cexp[i], false);
@@ -387,7 +387,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
 
           if (_parms._expand_user_y) {   // Categorical cols must be one-hot expanded
             // Get the centers and put into array
-            centers = new double[_parms._k][_ncolA];
+            centers = MemoryManager.malloc8d(_parms._k, _ncolA);//new double[_parms._k][_ncolA];
             for (int c = 0; c < _ncolA; c++) {
               for (int r = 0; r < _parms._k; r++)
                 centers[r][c] = yVecs[c].at(r);
@@ -397,7 +397,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
             centers = ArrayUtils.permuteCols(centers, tinfo._permutation);
             centers_exp = expandCats(centers, tinfo);
           } else {    // User Y already has categoricals expanded
-            centers_exp = new double[_parms._k][_ncolY];
+            centers_exp = MemoryManager.malloc8d(_parms._k, _ncolY);//new double[_parms._k][_ncolY];
             for (int c = 0; c < _ncolY; c++) {
               for (int r = 0; r < _parms._k; r++)
                 centers_exp[r][c] = yVecs[c].at(r);
@@ -470,7 +470,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
         // Set X and Y appropriately given SVD of A = UDV'
         // a) Set Y = D^(1/2)V'S where S = diag(\sigma)
         _parms._k = svd._parms._nv;   // parameter k may have been reduced due to rank deficient dataset
-        double[] dsqrt = new double[_parms._k];
+        double[] dsqrt = MemoryManager.malloc8d(_parms._k);//new double[_parms._k];
         for (int i = 0; i < _parms._k; i++) {
           dsqrt[i] = Math.sqrt(svd._output._d[i]);
           ArrayUtils.mult(centers_exp[i], dsqrt[i]);  // This gives one row of D^(1/2)V'
@@ -644,9 +644,9 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
           ArrayUtils.mult(model._output._std_deviation, catScale);
       }
 
-      double[] vars = new double[model._output._std_deviation.length];
-      double[] prop_var = new double[vars.length];
-      double[] cum_var = new double[vars.length];
+      double[] vars = MemoryManager.malloc8d(model._output._std_deviation.length);//new double[model._output._std_deviation.length];
+      double[] prop_var = MemoryManager.malloc8d(vars.length);//new double[vars.length];
+      double[] cum_var = MemoryManager.malloc8d(vars.length);//new double[vars.length];
       generateIPC(model._output._std_deviation, model._output._total_variance, vars, prop_var, cum_var);
 
       String[] colTypes = new String[_parms._k];
@@ -738,9 +738,9 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
         model._output._names_expanded = tinfo.coefNames();
 
         // Save training frame adaptation information for use in scoring later
-        model._output._normSub = tinfo._normSub == null ? new double[tinfo._nums] : tinfo._normSub;
+        model._output._normSub = tinfo._normSub == null ? MemoryManager.malloc8d(tinfo._nums):tinfo._normSub;//new double[tinfo._nums] : tinfo._normSub;
         if (tinfo._normMul == null) {
-          model._output._normMul = new double[tinfo._nums];
+          model._output._normMul = MemoryManager.malloc8d(tinfo._nums);//new double[tinfo._nums];
           Arrays.fill(model._output._normMul, 1.0);
         } else
           model._output._normMul = tinfo._normMul;
@@ -800,14 +800,14 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
 
           new DMatrix.TransposeTsk(frTA).doAll(dinfo._adaptedFrame.subframe(0, _ncolA));  // store T(A)
 
-          yinit = new double[_parms._k][colCount];    // store the X matrix from adaptedFrame as 2D double array
+          yinit = MemoryManager.malloc8d(_parms._k, colCount);//new double[_parms._k][colCount];    // store the X matrix from adaptedFrame as 2D double array
           for (int index = colCount; index < colCount+_ncolX; index++) {
             int trueIndex = index-colCount;
             yinit[trueIndex] = new FrameUtils.Vec2ArryTsk(colCount).doAll(dinfo._adaptedFrame.vec(trueIndex+_ncolA)).res;
           }
 
           // set weights to _weights in archetype class instead of as part of frame
-          double[] tempWeights = new double[(int)_train.numRows()];
+          double[] tempWeights = MemoryManager.malloc8d((int)_train.numRows());//new double[(int)_train.numRows()];
           if (weightId < 0) { //
             Arrays.fill(tempWeights,1);
           } else {
@@ -1048,16 +1048,16 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
         tinfo._cats -= binaryLossCols;  // decrease the number of categorical columns
         tinfo._nums += binaryLossCols;  // increase the number of numerical columns
 
-        int[] catOffsetsTemp = new int[tinfo._cats+1];   // offset column indices for 1-hot expanded values (includes enum-enum interaction)
-        boolean[] catMissingTemp = new boolean[tinfo._cats];  // bucket for missing levels
-        int[] catNAFillTemp = new int[tinfo._cats];    // majority class of each categorical col (or last bucket if _catMissing[i] is true)
-        int[] permutationTemp = new int[tinfo._permutation.length]; // permutation matrix mapping input col indices to adaptedFrame
-        int[] numOffsetsTemp = new int[tinfo._nums];
+        int[] catOffsetsTemp = MemoryManager.malloc4(tinfo._cats+1);//new int[tinfo._cats+1];   // offset column indices for 1-hot expanded values (includes enum-enum interaction)
+        boolean[] catMissingTemp = MemoryManager.mallocZ(tinfo._cats);//new boolean[tinfo._cats];  // bucket for missing levels
+        int[] catNAFillTemp = MemoryManager.malloc4(tinfo._cats);//new int[tinfo._cats];    // majority class of each categorical col (or last bucket if _catMissing[i] is true)
+        int[] permutationTemp = MemoryManager.malloc4(tinfo._permutation.length);//new int[tinfo._permutation.length]; // permutation matrix mapping input col indices to adaptedFrame
+        int[] numOffsetsTemp = MemoryManager.malloc4(tinfo._nums);//new int[tinfo._nums];
         int[] cardinalities = _train.cardinality();
-        int[] currentCardinality = new int[tinfo._cats];
-        double[] normMulTemp = new double[tinfo._nums];
-        double[] normSubTemp = new double[tinfo._nums];
-        double[] numMeansTemp = new double[tinfo._nums];
+        int[] currentCardinality = MemoryManager.malloc4(tinfo._cats);//new int[tinfo._cats];
+        double[] normMulTemp = MemoryManager.malloc8d(tinfo._nums);//new double[tinfo._nums];
+        double[] normSubTemp = MemoryManager.malloc8d(tinfo._nums);//new double[tinfo._nums];
+        double[] numMeansTemp = MemoryManager.malloc8d(tinfo._nums);//new double[tinfo._nums];
         int newColIndex = 0;
 
         for (int colIndex = 0; colIndex < numCatColumns; colIndex++) {  // go through all categoricals
@@ -1274,11 +1274,11 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
     }
 
     // Extract Y_j the k by d_j block of Y corresponding to categorical column j
-    // Note: d_j = number of levels in categorical column j
+    // Note: d_j = number of levels in categorical column j, not used often, don't bother to optimize further
     protected final double[][] getCatBlock(int j) {
       int catColJLevel = _numLevels[j];
       assert catColJLevel != 0 : "Number of levels in categorical column cannot be zero";
-      double[][] block = new double[rank()][catColJLevel];
+      double[][] block = MemoryManager.malloc8d(rank(), catColJLevel);//new double[rank()][catColJLevel];
 
       if (_transposed) {
         for (int level = 0; level < catColJLevel; level++) {
@@ -1294,11 +1294,6 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
         }
       }
       return block;
-    }
-
-    // Vector-matrix product x * Y_j where Y_j is block of Y corresponding to categorical column j
-    protected final double[] lmulCatBlock(double[] x, int j) {
-      return GlrmMojoModel.lmulCatBlock(x, j, _numLevels, _transposed, _archetypes, _catOffsets);
     }
   }
 
@@ -1374,7 +1369,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
     }
 
     @Override public void map(Chunk[] chks) {
-      double[] tmp = new double[_ncolA];
+      double[] tmp = MemoryManager.malloc8d(_ncolA);//new double[_ncolA];
       Random rand = RandomUtils.getRNG(0);
 
       for (int row = 0; row < chks[0]._len; row++) {
@@ -1461,17 +1456,17 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
     @SuppressWarnings("ConstantConditions")  // The method is too complex for IntelliJ
     @Override public void map(Chunk[] cs) {
       assert (_ncolA + 2*_ncolX) == cs.length;
-      double[] a = new double[_ncolA];
-      double[] tgrad = new double[_ncolX];  // new gradient calculation with reduced memory allocation
-      double[] u = new double[_ncolX];
+      double[] a = MemoryManager.malloc8d(_ncolA); //new double[_ncolA];
+      double[] tgrad = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];  // new gradient calculation with reduced memory allocation
+      double[] u = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];
       Chunk chkweight = _weightId >= 0 ? cs[_weightId] : new C0DChunk(1, cs[0]._len);
       Random rand = RandomUtils.getRNG(0);
       _xreg = 0;
       double[] xy = null;
       double[] prod = null;
       if (_yt._numLevels[0] > 0) {
-        xy = new double[_yt._numLevels[0]]; // maximum categorical level column is always the first one
-        prod = new double[_yt._numLevels[0]];
+        xy = MemoryManager.malloc8d(_yt._numLevels[0]);//new double[_yt._numLevels[0]]; // maximum categorical level column is always the first one
+        prod = MemoryManager.malloc8d(_yt._numLevels[0]);//new double[_yt._numLevels[0]];
       }
 
       for (int row = 0; row < cs[0]._len; row++) {
@@ -1601,12 +1596,12 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       int tArowStart = (int) cs[0].start();   // first row of chunk T(A)
       int tArowEnd = numTArow + numTArow - 1;   // last row index of chunk T(A)
       Chunk[] xChunks = new Chunk[_parms._k*2]; // to store chunk of X
-      _ytnew = new double[_ytold.nfeatures()][_ncolX];  // transpose of YeX
+      _ytnew = MemoryManager.malloc8d(_ytold.nfeatures(), _ncolX);//new double[_ytold.nfeatures()][_ncolX];  // transpose of YeX
       double[] xy = null;   // store expanded enum columns content
       double[] grad = null;
       if (_ytold._numLevels[tArowStart] > 0) {  // minor optimization here
-        xy = new double[_ytold._numLevels[tArowStart]];
-        grad = new double[_ytold._numLevels[tArowStart]];
+        xy = MemoryManager.malloc8d(_ytold._numLevels[tArowStart]);//new double[_ytold._numLevels[tArowStart]];
+        grad = MemoryManager.malloc8d(_ytold._numLevels[tArowStart]);//new double[_ytold._numLevels[tArowStart]];
       }
       ArrayList<Integer> xChunkIndices = findXChunkIndices(_xVecs, tArowStart, tArowEnd, _ytold); // grab x chunk ind
       int numColIndexOffset = _ytold._catOffsets[_ncats] - _ncats;   // index into xframe numerical rows
@@ -1707,7 +1702,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
 
       // Compute new y_j values using proximal gradient
       for (int j = 0; j < _ytnew.length; j++) {
-        double[] u = new double[_ytnew[0].length];  // Do not touch this memory allocation.  Needed for proper function.
+        double[] u = MemoryManager.malloc8d(_ytnew[0].length);//new double[_ytnew[0].length];  // Do not touch this memory allocation.  Needed for proper function.
         for (int k = 0; k < _ytnew[0].length; k++)
           u[k] = _ytold._archetypes[j][k] - _alpha * _ytnew[j][k];
 
@@ -1791,16 +1786,16 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       int xRow = 0;   // store row index of X chunk
 
       if (_yt._numLevels[tAChunkRowStart] > 0) {
-        tgradEnum = new double[_yt._numLevels[tAChunkRowStart]][_ncolX];
-        uEnum = new double[_yt._numLevels[tAChunkRowStart]][_ncolX];
-        xMat = new double[_yt._numLevels[tAChunkRowStart]][_ncolX];
-        xy = new double[_yt._numLevels[tAChunkRowStart]]; // maximum categorical level column is always the first one
-        prod = new double[_yt._numLevels[tAChunkRowStart]];
+        tgradEnum = MemoryManager.malloc8d(_yt._numLevels[tAChunkRowStart], _ncolX);//new double[_yt._numLevels[tAChunkRowStart]][_ncolX];
+        uEnum = MemoryManager.malloc8d(_yt._numLevels[tAChunkRowStart], _ncolX);//new double[_yt._numLevels[tAChunkRowStart]][_ncolX];
+        xMat = MemoryManager.malloc8d(_yt._numLevels[tAChunkRowStart], _ncolX);//new double[_yt._numLevels[tAChunkRowStart]][_ncolX];
+        xy = MemoryManager.malloc8d(_yt._numLevels[tAChunkRowStart]);//new double[_yt._numLevels[tAChunkRowStart]]; // maximum categorical level column is always the first one
+        prod = MemoryManager.malloc8d(_yt._numLevels[tAChunkRowStart]);//new double[_yt._numLevels[tAChunkRowStart]];
       }
 
       double a = 0;  // store an element of T(A)
-      double[] tgrad = new double[_ncolX];  // store a row of tgrad
-      double[] u = new double[_ncolX];      // store a row
+      double[] tgrad = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];  // store a row of tgrad
+      double[] u = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];      // store a row
 
       Random rand = RandomUtils.getRNG(0);
       _yreg = 0;
@@ -2030,13 +2025,13 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
 
     @Override public void map(Chunk[] cs) {
       assert (_ncolA + 2*_ncolX) == cs.length;
-      _ytnew = new double[_ytold.nfeatures()][_ncolX];
+      _ytnew = MemoryManager.malloc8d(_ytold.nfeatures(), _ncolX);//new double[_ytold.nfeatures()][_ncolX];
       Chunk chkweight = _weightId >= 0 ? cs[_weightId]:new C0DChunk(1,cs[0]._len);
       double[] xy = null;
       double[] grad = null;
       if (_ytold._numLevels[0] > 0) {
-        xy = new double[_ytold._numLevels[0]];
-        grad = new double[_ytold._numLevels[0]];
+        xy = MemoryManager.malloc8d(_ytold._numLevels[0]);// new double[_ytold._numLevels[0]];
+        grad = MemoryManager.malloc8d(_ytold._numLevels[0]);//new double[_ytold._numLevels[0]];
       }
 
       // Categorical columns
@@ -2103,7 +2098,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
 
       // Compute new y_j values using proximal gradient
       for (int j = 0; j < _ytnew.length; j++) {
-        double[] u = new double[_ytnew[0].length];  // Do not touch this memory allocation.  Needed for proper function.
+        double[] u = MemoryManager.malloc8d(_ytnew[0].length);//new double[_ytnew[0].length];  // Do not touch this memory allocation.  Needed for proper function.
         for (int k = 0; k < _ytnew[0].length; k++)
           u[k] = _ytold._archetypes[j][k] - _alpha * _ytnew[j][k];
 
@@ -2173,7 +2168,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
         int numColIndexOffset = _yt._catOffsets[_ncats] - _ncats;   // index into xframe numerical columns
 
         if (_yt._numLevels[tArowStart] > 0) {   // allocate memory only if there are categoricals in T(A) chunks
-          xy = new double[_yt._numLevels[tArowStart]];
+          xy = MemoryManager.malloc8d(_yt._numLevels[tArowStart]);//new double[_yt._numLevels[tArowStart]];
         }
 
         getXChunk(_xVecs, xChunkIndices.remove(0), xChunks); // get the first xFrame chunk
@@ -2441,10 +2436,10 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       double[] xy = null;
 
       if (_yt._numLevels[0] > 0)  // only allocate xy when there are categorical columns
-        xy = new double[_yt._numLevels[0]];    // maximum categorical level column is always the first one
+        xy = MemoryManager.malloc8d(_yt._numLevels[0]);//new double[_yt._numLevels[0]];    // maximum categorical level column is always the first one
 
       if (_regX)  // allocation memory only if necessary
-         xrow = new double[_ncolX];
+         xrow = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];
 
 
         for (int row = 0; row < cs[0]._len; row++) {
@@ -2512,7 +2507,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
   }
 
   // Solves XD = AY' for X where A is m x n, Y is k x n, D is k x k, and m >> n > k
-  // Resulting matrix X = (AY')D^(-1) will have dimensions m x k
+  // Resulting matrix X = (AY')D^(-1) will have dimensions m x k.  Used in initialization only, no need to optimize.
   private static class CholMulTask extends MRTask<CholMulTask> {
     final Archetypes _yt;     // _yt = Y' (transpose of Y)
     final int _ncolA;         // Number of cols in training frame
@@ -2539,7 +2534,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
     // [A,X,W] A is read-only training data, X is left matrix in A = XY decomposition, W is working copy of X
     @Override public void map(Chunk[] cs) {
       assert (_ncolA + 2*_ncolX) == cs.length;
-      double[] xrow = new double[_ncolX];
+      double[] xrow = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];
 
       for (int row = 0; row < cs[0]._len; row++) {
         // 1) Compute single row of AY'

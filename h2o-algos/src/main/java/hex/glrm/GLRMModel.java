@@ -292,7 +292,7 @@ public class GLRMModel extends Model<GLRMModel, GLRMModel.GLRMParameters, GLRMMo
     adaptTestForTrain(adaptedFr, true, false);
     assert ncols == adaptedFr.numCols();
     String[][] adaptedDomme = adaptedFr.domains();
-    double[][] proj = new double[_parms._k][_output._nnums + _output._ncats];
+    double[][] proj = MemoryManager.malloc8d(_parms._k, _output._nnums + _output._ncats);//new double[_parms._k][_output._nnums + _output._ncats];
 
     // Categorical columns
     for (int d = 0; d < _output._ncats; d++) {
@@ -324,6 +324,7 @@ public class GLRMModel extends Model<GLRMModel, GLRMModel.GLRMParameters, GLRMMo
     final boolean _save_imputed;  // Save imputed data into new vecs?
     final boolean _reverse_transform;   // Reconstruct original training data by reversing transform?
     ModelMetricsGLRM.GlrmModelMetricsBuilder _mb;
+    public double[] _tprod;
 
     GLRMScore( int ncolA, int ncolX, boolean save_imputed ) {
       this(ncolA, ncolX, save_imputed, _parms._impute_original);
@@ -333,12 +334,14 @@ public class GLRMModel extends Model<GLRMModel, GLRMModel.GLRMParameters, GLRMMo
       _ncolA = ncolA; _ncolX = ncolX;
       _save_imputed = save_imputed;
       _reverse_transform = reverse_transform;
+      if (_output._ncats>0)
+        _tprod = MemoryManager.malloc8d(_output._archetypes_raw._numLevels[0]);//new double[_output._archetypes_raw._numLevels[0]];
     }
 
     @Override public void map(Chunk[] chks) {
-      float[] atmp = new float[_ncolA];
-      double[] xtmp = new double[_ncolX];
-      double[] preds = new double[_ncolA];
+      float[] atmp = MemoryManager.malloc4f(_ncolA);//new float[_ncolA];
+      double[] xtmp = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];
+      double[] preds = MemoryManager.malloc8d(_ncolA);//new double[_ncolA];
       _mb = GLRMModel.this.makeMetricBuilder(null);
 
       if (_save_imputed) {
@@ -378,11 +381,11 @@ public class GLRMModel extends Model<GLRMModel, GLRMModel.GLRMParameters, GLRMMo
       return preds;
     }
 
-    private double[] impute_data(double[] tmp, double[] preds) {
+    private double[] impute_data(double[] tmp, double[] preds) {       
       return GlrmMojoModel.impute_data(tmp, preds, _output._nnums, _output._ncats, _output._permutation,
               _reverse_transform, _output._normMul, _output._normSub, _output._lossFunc,
               _output._archetypes_raw._transposed, _output._archetypes_raw._archetypes, _output._catOffsets,
-              _output._archetypes_raw._numLevels);
+              _output._archetypes_raw._numLevels, _tprod);
     }
   }
 
