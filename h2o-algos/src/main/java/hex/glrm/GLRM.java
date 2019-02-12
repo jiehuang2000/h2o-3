@@ -1459,6 +1459,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       double[] a = MemoryManager.malloc8d(_ncolA); //new double[_ncolA];
       double[] tgrad = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];  // new gradient calculation with reduced memory allocation
       double[] u = MemoryManager.malloc8d(_ncolX);//new double[_ncolX];
+      double[] xnew = MemoryManager.malloc8d(_ncolX);
       Chunk chkweight = _weightId >= 0 ? cs[_weightId] : new C0DChunk(1, cs[0]._len);
       Random rand = RandomUtils.getRNG(0);
       _xreg = 0;
@@ -1536,7 +1537,8 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
           double xold = chk_xold(cs, k).atd(row);   // Old value of x_i
           u[k] = xold - _alpha * tgrad[k];
         }
-        double[] xnew = _parms._regularization_x.rproxgrad(u, _alpha*_parms._gamma_x, rand);
+        Arrays.fill(xnew, 0.0);
+        xnew = _parms._regularization_x.rproxgrad(u, xnew, _alpha*_parms._gamma_x, rand);
         _xreg += _parms._regularization_x.regularize(xnew);
         for (int k = 0; k < _ncolX; k++)
           chk_xnew(cs, k).set(row,xnew[k]);
@@ -1784,6 +1786,8 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       int tAChunkRowStart = (int) tAChunks[0].start();   // first row index of T(A) Frame
       int tAChunkSize = (int) tAChunks[0]._len;   // number of rows in T(A) Frame
       int xRow = 0;   // store row index of X chunk
+      double[] xnew = MemoryManager.malloc8d(_ncolX);
+      ;
 
       if (_yt._numLevels[tAChunkRowStart] > 0) {
         tgradEnum = MemoryManager.malloc8d(_yt._numLevels[tAChunkRowStart], _ncolX);//new double[_yt._numLevels[tAChunkRowStart]][_ncolX];
@@ -1932,7 +1936,9 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
               uEnum[level][k] = xMat[level][k] - _alpha * tgradEnum[level][k];
             }
             // calculate how much update is due to regularization term
-            double[] xnew = _parms._regularization_y.rproxgrad(uEnum[level], _alpha*_parms._gamma_y, rand);
+            //Arrays.fill(xnew, 0.0);
+            Arrays.fill(xnew, 0.0);
+            xnew = _parms._regularization_y.rproxgrad(uEnum[level], xnew,_alpha*_parms._gamma_y, rand);
             _yreg += _parms._regularization_y.regularize(xnew);
             // need to update X chunks with new X values, it is of size catColJLevel by k
             // checking which x chunks contains the x elements that needed to be updated.
@@ -1968,7 +1974,8 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
           }
 
           // calculate how much update is due to regularization term
-          double[] xnew = _parms._regularization_y.rproxgrad(u, _alpha*_parms._gamma_y, rand);
+          Arrays.fill(xnew, 0.0);
+          xnew = _parms._regularization_y.rproxgrad(u, xnew,_alpha*_parms._gamma_y, rand);
           _yreg += _parms._regularization_y.regularize(xnew);
 
           for (int k=0; k<_ncolX; k++)  {
@@ -2092,7 +2099,7 @@ public class GLRM extends ModelBuilder<GLRMModel, GLRMModel.GLRMParameters, GLRM
       ArrayUtils.add(_ytnew, other._ytnew);
     }
 
-    @Override protected void postGlobal() {
+    @Override protected void postGlobal() { 
       assert _ytnew.length == _ytold.nfeatures() && _ytnew[0].length == _ytold.rank();
       Random rand = RandomUtils.getRNG(_parms._seed);
 

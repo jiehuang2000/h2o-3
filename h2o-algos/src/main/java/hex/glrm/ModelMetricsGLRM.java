@@ -5,6 +5,8 @@ import hex.Model;
 import hex.ModelMetrics;
 import hex.ModelMetricsUnsupervised;
 import water.fvec.Frame;
+import water.MemoryManager;
+
 
 public class ModelMetricsGLRM extends ModelMetricsUnsupervised {
   public double _numerr;
@@ -33,7 +35,7 @@ public class ModelMetricsGLRM extends ModelMetricsUnsupervised {
 
     public GlrmModelMetricsBuilder(int dims, int[] permutation) { this(dims, permutation, false); }
     public GlrmModelMetricsBuilder(int dims, int[] permutation, boolean impute_original) {
-      _work = new double[dims];
+      _work = MemoryManager.malloc8d(dims);//new double[dims];
       _miscls = _numcnt = _catcnt = 0;
       _permutation = permutation;
       _impute_original = impute_original;
